@@ -1,0 +1,31 @@
+{
+  "name": "cruiser",
+  "version": "0.0.0",
+  "description": "A framework for rapid endpoint creation.",
+  "main": "lib/cruiser.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "gulp"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HelpfulHuman/CruiserJS.git"
+  },
+  "author": "Nick Glenn <nick@helpfulhuman.com> (http://nick-glenn.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/HelpfulHuman/CruiserJS/issues"
+  },
+  "homepage": "https://github.com/HelpfulHuman/CruiserJS",
+  "dependencies": {
+    "chai": "^1.9.1",
+    "coffee-script": "^1.7.1",
+    "gulp": "^3.8.7",
+    "gulp-coffee": "^2.1.1",
+    "gulp-coffeelint": "^0.3.3",
+    "gulp-mocha": "^1.0.0",
+    "gulp-rimraf": "^0.1.0"
+  }
+}
