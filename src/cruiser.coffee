@@ -5,3 +5,5 @@ class Cruiser
 
   server: ->
     true
+
+module.exports = Cruiser
