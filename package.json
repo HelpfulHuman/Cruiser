@@ -1,31 +1,38 @@
 {
   "name": "cruiser",
-  "version": "0.0.0",
-  "description": "A framework for rapid endpoint creation.",
-  "main": "lib/cruiser.js",
-  "directories": {
-    "test": "test"
-  },
+  "version": "0.1.0",
+  "description": "Front-end state management model.",
+  "main": "dist/index.js",
+  "jsnext:main": "src/index.js",
   "scripts": {
-    "test": "gulp"
+    "preversion": "npm test",
+    "version": "npm run build",
+    "postversion": "git push origin master && git push origin master --tags",
+    "clean": "rm -rf dist/",
+    "build": "rollup -c",
+    "watch": "npm run build -- --watch",
+    "test": "mocha",
+    "tdd": "npm run test -- --watch",
+    "prepublish": "npm run clean && npm run build && npm run test"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/HelpfulHuman/CruiserJS.git"
+    "url": "https://github.com/HelpfulHuman/Cruiser.git"
   },
   "author": "Nick Glenn <nick@helpfulhuman.com> (http://nick-glenn.com/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/HelpfulHuman/CruiserJS/issues"
+    "url": "https://github.com/HelpfulHuman/Cruiser/issues"
   },
-  "homepage": "https://github.com/HelpfulHuman/CruiserJS",
-  "dependencies": {
-    "chai": "^1.9.1",
-    "coffee-script": "^1.7.1",
-    "gulp": "^3.8.7",
-    "gulp-coffee": "^2.1.1",
-    "gulp-coffeelint": "^0.3.3",
-    "gulp-mocha": "^1.0.0",
-    "gulp-rimraf": "^0.1.0"
+  "homepage": "https://github.com/HelpfulHuman/Cruiser",
+  "dependencies": {},
+  "devDependencies": {
+    "chai": "^4.1.1",
+    "mocha": "^3.5.0",
+    "rollup": "^0.47.4",
+    "rollup-plugin-buble": "^0.15.0",
+    "rollup-watch": "^4.3.1",
+    "sinon": "^3.2.0",
+    "sinon-chai": "^2.12.0"
   }
 }
