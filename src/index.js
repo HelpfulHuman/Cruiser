@@ -8,25 +8,33 @@ export function createStore (initialState = {}) {
   var subscribers = [];
   var store = {
     /**
-     * Subscribes the given function to state changes.
+     * Subscribes the given function to state changes and returns an "unsubscribe"
+     * method in case an anonymous function is given.
      *
-     * @param {Function} fn
+     * @param  {Function} subscriber
+     * @return {Function}
      */
-    subscribe (fn) {
-      if (
-        typeof fn === "function" &&
-        subscribers.indexOf(fn) === -1
-      ) {
-        subscribers.push(fn);
+    subscribe (subscriber) {
+      // Validate that a valid function was given
+      if (typeof subscriber !== "function") {
+        throw new Error("Bad Argument: subscriber must be a function");
       }
+
+      // Only subscribe the given function if it's the first time it's being added
+      if (subscribers.indexOf(subscriber) === -1) {
+        subscribers.push(subscriber);
+      }
+
+      // Return an anonymous unsubscribe function
+      return store.unsubscribe.bind(null, subscriber);
     },
     /**
      * Unsubscribes the given function from state changes.
      *
-     * @param {Function} fn
+     * @param {Function} subscriber
      */
-    unsubscribe (fn) {
-      var i = subscribers.indexOf(fn);
+    unsubscribe (subscriber) {
+      var i = subscribers.indexOf(subscriber);
       if (i !== -1) {
         subscribers.splice(i, 1);
       }
@@ -47,7 +55,7 @@ export function createStore (initialState = {}) {
      */
     reduce (reducer) {
       if (typeof reducer !== "function") {
-        throw new Error("store.reduce requires a valid function with a signature of state->state");
+        throw new Error("Bad argument: reducer must be a function");
       }
       // Alter the current state of the store using the given reducer
       currentState = reducer(currentState);
