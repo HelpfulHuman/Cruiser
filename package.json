@@ -1,6 +1,6 @@
 {
   "name": "cruiser",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Front-end state management model.",
   "main": "dist/index.js",
   "jsnext:main": "src/index.js",
