@@ -3,10 +3,16 @@
  *
  * @param {*} initialState
  */
-export function createStore (initialState = {}) {
+export function createStore (initialState = {}, ...middleware) {
+
+  if (typeof initialState !== "object") {
+    throw new Error("Bad argument: Store state MUST be an object.");
+  }
+
   var currentState = initialState;
-  var subscribers = [];
-  var store = {
+  var middleware   = composeMiddleware(middleware);
+  var subscribers  = [];
+  var store        = {
     /**
      * Subscribes the given function to state changes and returns an "unsubscribe"
      * method in case an anonymous function is given.
@@ -58,7 +64,7 @@ export function createStore (initialState = {}) {
         throw new Error("Bad argument: reducer must be a function");
       }
       // Alter the current state of the store using the given reducer
-      currentState = reducer(currentState);
+      currentState = middleware(currentState, reducer);
       // Inform subscribers of the state change
       for (var i = 0; i < subscribers.length; i++) {
         subscribers[i](currentState);
@@ -76,3 +82,37 @@ export function createStore (initialState = {}) {
 
   return store;
 }
+
+/**
+ * Creates and returns a single middleware function using multiple functions.
+ *
+ * @param  {Array<Function>} fns
+ * @return {Function}
+ */
+export function composeMiddleware (middleware) {
+  for (var i = 0; i < middleware.length; i++) {
+    if (typeof middleware[i] !== "function" || middleware[i].length !== 2) {
+      throw new Error("Bad argument: Middleware must be function(object, function) -> object.");
+    }
+  }
+
+  return function (state, reducer) {
+    // Add the reducer to the middleware stack
+    var remaining = middleware.concat(reducer);
+    // Create a next function that invokes the next middleware in the chain.
+    var next = function (value) {
+      // Get the next function in the stack
+      var fn = remaining.shift();
+      // Capture and check the result
+      var result = fn(value, next);
+      // Validate that the result is an object!
+      if (typeof result !== "object") {
+        throw new Error(`An object was expected to return from your middleware/reducer but "${fn.name}" returned a type of "${typeof result}" instead.`);
+      }
+      // Return the result
+      return result;
+    }
+    // Invoke the first middleware method in the stack and return the result
+    return next(state);
+  };
+};
