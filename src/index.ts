@@ -7,19 +7,42 @@ export interface Middleware<T> {
 }
 
 export interface Subscriber<T> {
-  (newState: T);
+  (newState: T): void;
 }
 
 export interface Reducer<T> {
-  (state: T): T;
-  (state: T): object;
+  (state: T): object|T;
+}
+
+export interface BoundReducer<T> {
+  (...args: any[]): T;
 }
 
 export interface Store<T> {
   getState(): T;
-  reduce(reducer: Reducer<T>);
+  reduce(reducer: Reducer<T>): T;
+  dispatch(reducer: Reducer<T>): T;
+  bindReducer(reducer: Reducer<T>): BoundReducer<T>;
   subscribe(subscriber: Subscriber<T>): void;
   unsubscribe(subscriber: Subscriber<T>): void;
+}
+
+/**
+ * Throws an error if the given value isn't an object.
+ */
+function assertObject(val: any, message: string): void {
+  if (typeof val !== "object") {
+    throw new Error(message);
+  }
+}
+
+/**
+ * Throws an error if the given value isn't a function.
+ */
+function assertFunc(val: any, message: string): void {
+  if (typeof val !== "function") {
+    throw new Error(message);
+  }
 }
 
 /**
@@ -27,9 +50,7 @@ export interface Store<T> {
  * and for managing state model mutations.
  */
 export function createStore<T>(initialState: T, ...middleware: Middleware<T>[]): Store<T> {
-  if (typeof initialState !== "object") {
-    throw new Error("Bad argument: Store state MUST be an object.");
-  }
+  assertObject(initialState, "Bad argument: Store state MUST be an object.");
 
   var currentState    = initialState;
   var subscribers     = [];
@@ -44,12 +65,11 @@ export function createStore<T>(initialState: T, ...middleware: Middleware<T>[]):
 
   /**
    * Passes the current state to the given reducer, updates the stored state and
-   * informs subscribers of the change.
+   * informs subscribers of the change.  Returns the new state immediately.
    */
-  function reduce(reducer: Reducer<T>) {
-    if (typeof reducer !== "function") {
-      throw new Error("Bad argument: reducer must be a function");
-    }
+  function reduce(reducer: Reducer<T>): T {
+    assertFunc(reducer, "Bad argument: reducer must be a function");
+
     // Alter the current state of the store using the given reducer
     currentState = runMiddleware(currentState, reducer) as T;
 
@@ -57,17 +77,17 @@ export function createStore<T>(initialState: T, ...middleware: Middleware<T>[]):
     for (var i = 0; i < subscribers.length; i++) {
       subscribers[i](currentState);
     }
+
+    // Return the new state
+    return currentState;
   }
 
   /**
    * Subscribes the given function to state changes and returns an "unsubscribe"
    * method in case an anonymous function is given.
    */
-  function subscribe(subscriber: Subscriber<T>) {
-    // Validate that a valid function was given
-    if (typeof subscriber !== "function") {
-      throw new Error("Bad Argument: subscriber must be a function");
-    }
+  function subscribe(subscriber: Subscriber<T>): void {
+    assertFunc(subscriber, "Bad Argument: subscriber must be a function");
 
     // Only subscribe the given function if it's the first time it's being added
     if (subscribers.indexOf(subscriber) === -1) {
@@ -81,25 +101,30 @@ export function createStore<T>(initialState: T, ...middleware: Middleware<T>[]):
   /**
    * Unsubscribes the given function from state changes.
    */
-  function unsubscribe(subscriber: Subscriber<T>) {
+  function unsubscribe(subscriber: Subscriber<T>): void {
     var i = subscribers.indexOf(subscriber);
     if (i !== -1) {
       subscribers.splice(i, 1);
     }
   }
 
-  return { getState, reduce, subscribe, unsubscribe };
+  /**
+   * Hard-bind a reducer to the store.
+   */
+  function bindReducer(reducer: Reducer<T>): BoundReducer<T> {
+    return function (...args: any[]): T {
+      return reduce(state => reducer(state, ...args));
+    };
+  }
+
+  return { getState, reduce, dispatch: reduce, bindReducer, subscribe, unsubscribe };
 }
 
 /**
  * Creates and returns a single middleware function using multiple functions.
  */
 export function composeMiddleware<T>(middleware: Middleware<T>[]) {
-  for (var i = 0; i < middleware.length; i++) {
-    if (typeof middleware[i] !== "function" || middleware[i].length !== 2) {
-      throw new Error("Bad argument: Middleware must be function(object, function) -> object.");
-    }
-  }
+  middleware.forEach(fn => assertFunc(fn, "Bad Argument: Middleware(s) must be functions."));
 
   return function (state, reducer) {
     // Add the reducer to the middleware stack
@@ -112,9 +137,7 @@ export function composeMiddleware<T>(middleware: Middleware<T>[]) {
         // Capture and check the result
         var result = fn(value, next);
         // Validate that the result is an object!
-        if (typeof result !== "object") {
-          throw new Error(`An object was expected to return from your middleware/reducer but "${fn.name}" returned a type of "${typeof result}" instead.`);
-        }
+        assertObject(result, `An object was expected to return from your middleware/reducer but "${fn.name}" returned a type of "${typeof result}" instead.`);
         // Return the result
         return result;
       } catch (err) {

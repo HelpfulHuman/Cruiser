@@ -80,3 +80,19 @@ function simpleLogger (state, next) {
   return newState;
 }
 ```
+
+## Hard-binding Reducers
+
+```js
+import { createStore } from "cruiser";
+
+const store = createStore({
+  todos: [],
+});
+
+const addTodo = store.bindReducer(function (state, ...todos) {
+  return { todos: state.todos.concat(todos) };
+});
+
+addTodo("Mow the lawn", "Walk the dog");
+```
