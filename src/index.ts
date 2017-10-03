@@ -35,8 +35,8 @@ export interface Store<T> {
  * Throws an error if the given value isn't an object.
  */
 function assertObject(val: any, message: string): void {
-  if (typeof val !== "object") {
-    throw new Error(message);
+  if (!val || typeof val !== "object") {
+    throw new TypeError(message);
   }
 }
 
@@ -45,7 +45,7 @@ function assertObject(val: any, message: string): void {
  */
 function assertFunc(val: any, message: string): void {
   if (typeof val !== "function") {
-    throw new Error(message);
+    throw new TypeError(message);
   }
 }
 

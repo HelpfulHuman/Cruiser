@@ -45,38 +45,41 @@ describe("Store.reduce()", function() {
     assert.equal(val2, secondState);
   });
 
-  it("throws an error when a non-object or null value is returned from a reducer", function() {
-    var store = createStore({});
-
-    assert.throws(function() {
-      store.reduce(state => false);
-    }, "An object was expected to return from your middleware/reducer but \"boolean\" was returned instead.");
-
-    assert.throws(function() {
-      store.reduce(state => "string literal is not an object");
-    }, "An object was expected to return from your middleware/reducer but \"string\" was returned instead.");
-
-    assert.throws(function() {
-      store.reduce(state => 42);
-    }, "An object was expected to return from your middleware/reducer but \"number\" was returned instead.");
-
-    assert.throws(function() {
-      store.reduce(state => null);
-    }, "An object was expected to return from your middleware/reducer but \"null\" was returned instead.");
-
-    assert.doesNotThrow(function() {
-      function ImmutableMaybe() {}
-      store.reduce(state => new ImmutableMaybe());
+  it("reports an error when a non-object or null value is returned from a reducer and returns the original value instead", function() {
+    var initialState = { foo: "bar" };
+    var store = createStore(initialState);
+    var _cachedConsoleError = console.error;
+    var catchError = sinon.spy(function(err) {
+      assert.instanceOf(err, TypeError);
     });
+    var dontCatchError = sinon.stub();
 
-    assert.doesNotThrow(function() {
-      store.reduce(state => ([]));
-    });
+    console.error = catchError;
 
-    assert.doesNotThrow(function() {
-      store.reduce(state => ({}));
-    });
+    var notBool   = store.reduce(state => (false));
+    var notString = store.reduce(state => "string literal is not an object");
+    var notNumber = store.reduce(state => 42);
+    var notNull   = store.reduce(state => null);
 
+    console.error = dontCatchError;
+
+    function ImmutableMaybe() {}
+
+    var isInstance = store.reduce(state => new ImmutableMaybe());
+    var isArray    = store.reduce(state => ([])); // yes, arrays are objects
+    var isObject   = store.reduce(state => ({}));
+
+    assert.equal(catchError.callCount, 4);
+    assert.equal(dontCatchError.callCount, 0);
+    assert.equal(notBool, initialState);
+    assert.equal(notString, initialState);
+    assert.equal(notNumber, initialState);
+    assert.equal(notNull, initialState);
+    assert.instanceOf(isInstance, ImmutableMaybe);
+    assert.isArray(isArray);
+    assert.isObject(isObject);
+
+    console.error = _cachedConsoleError;
   });
 
 });

@@ -5,7 +5,8 @@
  * to run the following command within the parent directory to
  * run this demo:
  *
- * `npm install && npm run build && node examples/basic_todo.js`
+ *
+ * $ npm install && npm run build && node examples/basic_todo.js
  */
 var cruiser = require("../");
 
