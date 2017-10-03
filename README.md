@@ -28,32 +28,26 @@ const store = cruiser.createStore({
 
 // Subscribe to state changes
 store.subscribe(function (state) {
-  console.log(JSON.stringify(state));
+  console.log(state);
 });
 
 // Create a couple of example actions
-function addTodo (task) {
-  var todo = { task, completed: false };
-  return function (state) {
+function addTodo(todo) {
+  return function(state) {
     return { todos: state.todos.concat(todo) };
   };
 }
 
-function completeTodo (task) {
-  return function (state) {
-    return {
-      todos: state.todos.map(function (todo) {
-        return { task, complete: (todo.task === task) };
-      })
-    };
+function removeTodo(todo) {
+  return function(state) {
+    return { todos: state.todos.filter(t => t !== todo) };
   }
 }
 
 // Pass the `addTodo()` result to your store's `.reduce()` method
 store.reduce(addTodo("mow the lawn"));
 store.reduce(addTodo("walk the dog"));
-store.reduce(completeTodo("mow the lawn"));
-store.reduce(addTodo("mow the lawn"));
+store.reduce(removeTodo("mow the lawn"));
 ```
 
 ## Middleware

@@ -10,6 +10,10 @@ export interface Subscriber<T> {
   (newState: T): void;
 }
 
+export interface Unsubscriber {
+  (): void;
+}
+
 export interface Reducer<T> {
   (state: T): object|T;
 }
@@ -86,7 +90,7 @@ export function createStore<T>(initialState: T, ...middleware: Middleware<T>[]):
    * Subscribes the given function to state changes and returns an "unsubscribe"
    * method in case an anonymous function is given.
    */
-  function subscribe(subscriber: Subscriber<T>): void {
+  function subscribe(subscriber: Subscriber<T>): Unsubscriber {
     assertFunc(subscriber, "Bad Argument: subscriber must be a function");
 
     // Only subscribe the given function if it's the first time it's being added
@@ -137,7 +141,7 @@ export function composeMiddleware<T>(middleware: Middleware<T>[]) {
         // Capture and check the result
         var result = fn(value, next);
         // Validate that the result is an object!
-        assertObject(result, `An object was expected to return from your middleware/reducer but "${fn.name}" returned a type of "${typeof result}" instead.`);
+        assertObject(result, `An object was expected to return from your middleware/reducer but "${typeof result}" was returned instead.`);
         // Return the result
         return result;
       } catch (err) {
