@@ -110,7 +110,7 @@ When creating a store, you can optionally define a buffer interval that will ena
  * This is a store with no buffer, so actions will be immediately applied
  * and subscribers of this store will be informed of the change.
  */
-const noBufferStore = createStore(..., { bufferInterval: 0 });
+const unbufferedStore = createStore(..., { bufferInterval: 0 });
 
 /**
  * This is a store with a longer buffer interval of 50ms, where it every action
