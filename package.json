@@ -1,6 +1,6 @@
 {
   "name": "cruiser",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "A type-safe state management solution with atomic mutation support.",
   "main": "dist/index.js",
   "jsnext:main": "dist/index.es.js",
