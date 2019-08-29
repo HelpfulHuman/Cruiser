@@ -1,4 +1,4 @@
-import { createStore, IStore } from "./";
+import { createStore, IStore } from ".";
 
 type TestModel = {
   // tslint:disable-next-line: completed-docs
