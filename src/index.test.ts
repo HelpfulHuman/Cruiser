@@ -21,7 +21,7 @@ describe("createStore", () => {
   let store: IStore<TestModel>;
 
   beforeEach(() => {
-    store = createStore<TestModel>(initialState, { debug: false, bufferInterval: 0 });
+    store = createStore<TestModel>(initialState, { bufferInterval: 0 });
     increment.mockClear();
   });
 
@@ -105,7 +105,7 @@ describe("createStore", () => {
   });
 
   test("dispatch() accepts an action function with the related arguments and calls the subscriber once due to batching", (done) => {
-    store = createStore(initialState, { debug: false, bufferInterval: 25 });
+    store = createStore(initialState, { bufferInterval: 25 });
 
     const sub = jest.fn();
 
