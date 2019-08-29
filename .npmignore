@@ -1,4 +1,7 @@
 example/
 src/
-test/
 *_cache/
+*.log
+rollup.config.js
+tsconfig.json
+tslint.json

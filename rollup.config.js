@@ -1,12 +1,14 @@
-import typescript from "rollup-plugin-typescript2";
+import typescript from "rollup-plugin-typescript";
 
-export default {
-  input: "./src/index.ts",
-  output: [
-    { file: "./dist/index.js", format: "cjs" },
-    { file: "./dist/index.es.js", format: "es" },
-  ],
-  plugins: [
-    typescript(),
-  ],
-};
+export default [
+  {
+    input: "src/store.ts",
+    output: [
+      { file: "dist/store.js", format: "cjs" },
+      { file: "dist/store.es.js", format: "es" },
+    ],
+    plugins: [
+      typescript(),
+    ],
+  }
+];

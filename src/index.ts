@@ -1,155 +1,157 @@
-export interface NextFunction<T> {
-  (state: T): T;
-}
+import { nextTick } from "./nextTick";
 
-export interface Middleware<T> {
-  (newState: T, next: NextFunction<T>): T;
-}
-
-export interface Subscriber<T> {
-  (newState: T): void;
-}
-
-export interface Unsubscriber {
-  (): void;
-}
-
-export interface Reducer<T> {
-  (state: T): object|T;
-}
-
-export interface BoundReducer<T> {
-  (...args: any[]): T;
-}
-
-export interface Store<T> {
-  getState(): T;
-  reduce(reducer: Reducer<T>): T;
-  dispatch(reducer: Reducer<T>): T;
-  bindReducer(reducer: Reducer<T>): BoundReducer<T>;
-  subscribe(subscriber: Subscriber<T>): void;
-  unsubscribe(subscriber: Subscriber<T>): void;
-}
-
-/**
- * Throws an error if the given value isn't an object.
- */
-function assertObject(val: any, message: string): void {
-  if (!val || typeof val !== "object") {
-    throw new TypeError(message);
-  }
-}
-
-/**
- * Throws an error if the given value isn't a function.
- */
-function assertFunc(val: any, message: string): void {
-  if (typeof val !== "function") {
-    throw new TypeError(message);
-  }
-}
-
-/**
- * Create a new store object for interacting with current state model
- * and for managing state model mutations.
- */
-export function createStore<T>(initialState: T, ...middleware: Middleware<T>[]): Store<T> {
-  assertObject(initialState, "Bad argument: Store state MUST be an object.");
-
-  var currentState    = initialState;
-  var subscribers     = [];
-  var runMiddleware   = composeMiddleware(middleware);
-
+export type StoreOptions = {
   /**
-   * Returns the store's most current state.
+   * When `true`, logging will be enabled showing all actions that are dispatched to this store.
+   * _Defaults to `true`._
    */
-  function getState(): T {
-    return currentState;
+  // debug: boolean;
+  /**
+   * Optionally configure a debounce duration used to buffer actions.  This means that actions that
+   * are received during the debouncing period will be collected and won't be processed until no new
+   * actions are dispatched during the debounce duration.  It is highly recommended to keep this interval
+   * value small (less than `150` milliseconds). Setting this value to `0` will disable all buffering.
+   * _Defaults to `25`._
+   */
+  bufferInterval: number;
+};
+
+const defaultOptions: StoreOptions = {
+  // debug: true,
+  bufferInterval: 25,
+};
+
+// export type CallContext = {
+//   /** The name of the action that made the change. */
+//   action: string;
+//   /** The arguments that the action was called with. */
+//   payload: unknown[];
+//   /** The resulting state after  */
+// }[];
+
+export type Subscriber<Model> = (state: Readonly<Model>) => void;
+
+export type Action<Model> = (state: Model, ...args: unknown[]) => Model;
+
+type OmitFirst<T extends unknown[]> =
+  T["length"] extends 0 ? [] :
+  (((...b: T) => void) extends (a: unknown, ...b: infer I) => void ? I : []);
+
+export type Dispatcher<Model, ActionFunc extends Action<Model> = Action<Model>> =
+  (action: ActionFunc, ...args: OmitFirst<Parameters<ActionFunc>>) => void;
+
+/**
+ * Describes the methods that are available for a Cruiser store.
+ */
+export interface IStore<Model> {
+  /**
+   * Will be `true` if the store was created with a `debounce` value that was greater than `0`.
+   */
+  readonly buffered: boolean;
+  /**
+   * Dispatches an action to the store in order to affect the current state of the store.  Will
+   * be processed atomically and batched (when `batch` is enabled for the store).
+   */
+  dispatch: Dispatcher<Model, Action<Model>>;
+  /**
+   * Returns the current state of the store as a readonly reference.
+   */
+  getState(): Readonly<Model>;
+  /**
+   * Immediately replaces the current state in the store regardless of queue.
+   */
+  setState(state: Model): void;
+  /**
+   * Adds a function that will be informed of changes and provided with the most relevant state at
+   * the moment that the subscriber is updated.  Returns a function that can be used unsubscribe the
+   * listener.  _Note: A function pointer will only be added once to the store, subsequent calls will
+   * still return an unsubscribe function to remove said function pointer._
+   */
+  subscribe(subscriber: Subscriber<Model>): { (): boolean };
+}
+
+/**
+ * Creates a new Cruiser store.
+ */
+export function createStore<Model>(initialState: Model, opts: Partial<StoreOptions> = {}): IStore<Model> {
+  // Configuration options used to define store behaviour.
+  const { bufferInterval: debounce } = { ...defaultOptions, ...opts };
+
+  // Whether or not the store is buffered.
+  const buffered = debounce > 0;
+
+  // The current state of our store.
+  let state = { ...initialState };
+
+  // The list of subscribers for the store.
+  let subscribers: Subscriber<Model>[] = [];
+
+  // The dispatcher method that will be used for this store.
+  let dispatch: Dispatcher<Model>;
+
+  if (buffered) {
+    // Buffer of actions to process in a batch.
+    let timer: null | number | NodeJS.Timeout;
+    let buffer: [Action<Model>, unknown[]][] = [];
+
+    const processBuffer = () => {
+      timer = null;
+
+      let nextState = state;
+      let next = buffer.shift();
+      while (next) {
+        nextState = next[0](nextState, ...next[1]);
+        next = buffer.shift();
+      }
+
+      _update(nextState);
+    };
+
+    dispatch = <Fn extends Action<Model>>(action: Fn, ...args: OmitFirst<Parameters<Fn>>) => {
+      buffer.push([action, args]);
+      clearTimeout(timer as NodeJS.Timeout);
+      timer = setTimeout(processBuffer, debounce);
+    };
+
+  } else {
+
+    dispatch = <Fn extends Action<Model>>(action: Fn, ...args: OmitFirst<Parameters<Fn>>) => {
+      _update(action(state, ...args));
+    };
+
   }
 
-  /**
-   * Passes the current state to the given reducer, updates the stored state and
-   * informs subscribers of the change.  Returns the new state immediately.
-   */
-  function reduce(reducer: Reducer<T>): T {
-    assertFunc(reducer, "Bad argument: reducer must be a function");
-
-    // Alter the current state of the store using the given reducer
-    currentState = runMiddleware(currentState, reducer) as T;
-
-    // Inform subscribers of the state change
-    for (var i = 0; i < subscribers.length; i++) {
-      subscribers[i](currentState);
+  // tslint:disable-next-line: completed-docs
+  function _update(_state: Model) {
+    state = _state;
+    for (let sub of subscribers) {
+      nextTick(() => sub(_state));
     }
-
-    // Return the new state
-    return currentState;
   }
 
-  /**
-   * Subscribes the given function to state changes and returns an "unsubscribe"
-   * method in case an anonymous function is given.
-   */
-  function subscribe(subscriber: Subscriber<T>): Unsubscriber {
-    assertFunc(subscriber, "Bad Argument: subscriber must be a function");
-
-    // Only subscribe the given function if it's the first time it's being added
+  // tslint:disable-next-line: completed-docs
+  function subscribe(subscriber: Subscriber<Model>) {
     if (subscribers.indexOf(subscriber) === -1) {
       subscribers.push(subscriber);
     }
 
-    // Return an anonymous unsubscribe function
-    return unsubscribe.bind(null, subscriber);
-  }
-
-  /**
-   * Unsubscribes the given function from state changes.
-   */
-  function unsubscribe(subscriber: Subscriber<T>): void {
-    var i = subscribers.indexOf(subscriber);
-    if (i !== -1) {
+    return function () {
+      const i = subscribers.indexOf(subscriber);
+      if (i === -1) { return false; }
       subscribers.splice(i, 1);
-    }
-  }
-
-  /**
-   * Hard-bind a reducer to the store.
-   */
-  function bindReducer(reducer: Reducer<T>): BoundReducer<T> {
-    return function (...args: any[]): T {
-      return reduce(state => reducer(state, ...args));
+      return true;
     };
   }
 
-  return { getState, reduce, dispatch: reduce, bindReducer, subscribe, unsubscribe };
+  // tslint:disable-next-line: completed-docs
+  function getState() {
+    return state;
+  }
+
+  // tslint:disable-next-line: completed-docs
+  function setState(state: Model) {
+    _update(state);
+  }
+
+  return { buffered, getState, setState, subscribe, dispatch };
 }
-
-/**
- * Creates and returns a single middleware function using multiple functions.
- */
-export function composeMiddleware<T>(middleware: Middleware<T>[]) {
-  middleware.forEach(fn => assertFunc(fn, "Bad Argument: Middleware(s) must be functions."));
-
-  return function (state, reducer) {
-    // Add the reducer to the middleware stack
-    var remaining = middleware.concat(reducer);
-    // Create a next function that invokes the next middleware in the chain.
-    function next (value: T): T {
-      try {
-        // Get the next function in the stack
-        var fn = remaining.shift();
-        // Capture and check the result
-        var result = fn(value, next);
-        // Validate that the result is an object!
-        assertObject(result, `An object was expected to return from your middleware/reducer but "${typeof result}" was returned instead.`);
-        // Return the result
-        return result;
-      } catch (err) {
-        console.error(err);
-        return value;
-      }
-    }
-    // Invoke the first middleware method in the stack and return the result
-    return next(state);
-  };
-};
